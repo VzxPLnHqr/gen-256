@@ -17,4 +17,7 @@ Let's have a computer do it for us.
 1. `$ ./mill -i generator.run`
 
 ## Status
-* Can generate randome script of arbitrary length. But that is about it so far. The generated script is very likely to be invalid.
+* Can generate random bitcoin script of arbitrary length. But that is about it so far. The generated script is very likely to be invalid.
+
+## References / Acknowledgements / Notes
+* Using typeclasses to (inefficiently) code up a genetic algorithm was [shown here](https://www.youtube.com/watch?v=lshIBfmsktk).
