@@ -19,8 +19,14 @@ Bitcoin has various op_codes for manipulating the stack (and the altstack).
 
 If we express a 256 bit number as 8 32-bit numbers, and we want to perform
 arithmetic modulo `n` (which is another 32-bit number), then what we seek is
-a function code `fn_add_mod_n = ... OP_xxx ...`. 
+a function code `fn_add_mod_n = ... OP_xxx ... OP_yyy...`. 
 
+`fn_add_mod_n` would expect a stack with 24 elements, and would return a stack with 8 elements.
+Each element on the stack is a 32-bit number. For convenience we can write:
+
+`<a1>...<a8> <b1>...<b8> <n1>...<n8> fn_add_mod_n == <c1>...<c8>`
+
+Can we construct a genetic algorithm to find such a function code?
 
 ## Running
 
