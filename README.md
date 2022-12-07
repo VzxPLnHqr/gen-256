@@ -11,6 +11,16 @@ This means that we can write really large scripts to do some complex calculation
 Writing/finding efficient expressions for such scripts is hard.
 
 Let's have a computer do it for us.
+## A Goal - `fn_codes`
+
+### `fn_add_mod_n` - 256-bit Modular Arithmetic
+
+Bitcoin has various op_codes for manipulating the stack (and the altstack). 
+
+If we express a 256 bit number as 8 32-bit numbers, and we want to perform
+arithmetic modulo `n` (which is another 32-bit number), then what we seek is
+a function code `fn_add_mod_n = ... OP_xxx ...`. 
+
 
 ## Running
 

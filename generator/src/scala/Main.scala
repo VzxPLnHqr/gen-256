@@ -112,7 +112,7 @@ object Evolver {
             } yield (b,score)
         }
 
-        val wheel = scoredPop.map(rouletteWheel(_))
+        val wheel = scoredPop.flatMap(rouletteWheel(_))
 
         //fixed population size
         (1 to newPopSize).toList.parTraverse{_ => 
@@ -133,15 +133,16 @@ object Evolver {
      * take a scored population, make a roulette wheel with odds for a
      * candidate proportional to what it contributes to the total fitness
      * of the population */
-    def rouletteWheel(pop: List[(ByteVector, BigInt)]): RouletteWheel = {
-        val totalFitness = pop.map(_._2).foldLeft(BigInt(0))(_ + _)
-        val popPmf = pop.map((candidate, score) => (candidate, (Real(score)/Real(totalFitness)).toDouble)).sortBy(_._2)
-        val popCdf = popPmf.map(_._2).scanLeft(0.0)(_ + _).drop(1)
-        
-        (p: Double) => popCdf.zip(popPmf).dropWhile{
-            case (accum_p, (c_bytes, c_p)) => accum_p < p
-        }.map(_._2._1).headOption
-    }
+    def rouletteWheel(pop: List[(ByteVector, BigInt)]): IO[RouletteWheel] = for {
+        totalFitness <- IO(pop.map(_._2).foldLeft(BigInt(0))(_ + _))
+        popPmf <- IO(pop.map((candidate, score) => (candidate, (Real(score)/Real(totalFitness)).toDouble)).sortBy(_._2))
+        popCdf <- IO(popPmf.map(_._2).scanLeft(0.0)(_ + _).drop(1))
+        thewheel <- IO(
+            (p: Double) => popCdf.zip(popPmf).dropWhile{
+                case (accum_p, (c_bytes, c_p)) => accum_p < p
+            }.map(_._2._1).headOption
+        )
+    } yield thewheel
 
     /**
      * perform randome crossover between two byte vectors:
