@@ -18,6 +18,11 @@ object Main extends IOApp.Simple {
 
 }
 
+object RandomBitcoinScripts extends RandomBitcoinScriptUtils with IOApp.Simple {
+    val randomIO = std.Random.scalaUtilRandom[IO]
+    val run = prog0
+}
+
 trait RandomBitcoinScriptUtils {
 
     val randomIO: IO[std.Random[IO]]
@@ -82,9 +87,9 @@ trait RandomBitcoinScriptUtils {
     val prog0 = IO.println(s"${allowableScriptElts.size} allowable op codes:\n $allowableScriptElts") >> 
         (for {
         _ <- IO.print("gen random script?")
-        //_ <- IO.readLine
+        _ <- IO.readLine
         script <- randomScriptfromRandomBytes
-        _ <- IO.println(s"random ${script.length}"/* element script: " + script.mkString(" ")*/)
+        _ <- IO.println(s"random ${script.length} element script: " + script.mkString(" "))
         scriptBytes <- IO(Script.write(script))
         parsedScript <- IO(Script.parse(scriptBytes)).handleErrorWith(e => IO.println("parse error: "+ e.getMessage()))
     } yield ()).foreverM

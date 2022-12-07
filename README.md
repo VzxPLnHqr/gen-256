@@ -14,10 +14,14 @@ Let's have a computer do it for us.
 
 ## Running
 
-1. `$ ./mill -i generator.run`
+Not much to see here yet.
+1. `$ ./mill -i generator.runMain vzxplnhqr.RandomBitcoinScripts` will generate a random (likely invalid) bitcoin script every time you press a key. You will need to `ctrl+c` to exit the program.
+
+2. `$ ./mill -i generator.run` will run a naive genetic algorithm which starts from a population of two strings, and mutates them to ultimately arrive at a third target string.
 
 ## Status
 * Can generate random bitcoin script of arbitrary length. But that is about it so far. The generated script is very likely to be invalid.
+* Not searching for bitcoin scripts yet, just trying to make the genetic algorithm itself work efficiently for strings first.
 
 ## References / Acknowledgements / Notes
 * Using typeclasses to (inefficiently) code up a genetic algorithm was [shown here](https://www.youtube.com/watch?v=lshIBfmsktk).
