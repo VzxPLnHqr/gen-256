@@ -19,7 +19,7 @@ object Main extends IOApp.Simple {
 }
 
 trait RandomBitcoinScriptUtils {
-    
+
     val randomIO: IO[std.Random[IO]]
 
     def randomBytes(length: Int): IO[ByteVector] = 
@@ -165,16 +165,6 @@ object Evolver {
             }
         input.toArray.toList.parTraverse(b => mutateByte(probOfMutation,b)).map(ByteVector(_))
     }
-    
-    val mary = ByteVector("the quick brown fox jumped over the sleeping dog".getBytes)
-    val fox = ByteVector("mary had a little lamb whose fleece was white as snow".getBytes)
-
-    def prog1( implicit random: std.Random[IO]) = for {
-        _ <- IO.println("crossing over...")
-        _ <- IO.println("lhs: " + String(mary.toArray))
-        _ <- IO.println("rhs: " + String(fox.toArray))
-        r <- crossover(mary,fox)
-    } yield r
 }
 
 object StringSearchExample {
@@ -187,16 +177,19 @@ object StringSearchExample {
         def fromBytes(bytes: ByteVector): String = String(bytes.toArray)
     }
 
-    // naive fitness function: number of bits which are the 
-    // same as the target string
-    val simpleFitnessFn: String => IO[BigInt] = s => {
-        val candidate_bits = ByteVector(s.getBytes).bits
-        val length_dif = math.abs(targetBits.size - candidate_bits.size) 
-        val maxLength = math.min(candidate_bits.length.toInt, targetBits.length.toInt)
-        val lengthPenalty = math.max(candidate_bits.length.toInt, targetBits.length.toInt) - length_dif
+    // naive fitness function for strings: 
+    //    number of bits which are the 
+    //    same as the target string with bonus if strings are similar in length
+    val simpleFitnessFn: String => String => IO[BigInt] = 
+        target => candidate => {
+        val candidate_bits = ByteVector(candidate.getBytes).bits
+        val target_bits = ByteVector(target.getBytes).bits
+        val length_dif = math.abs(target_bits.size - candidate_bits.size) 
+        val maxLength = math.min(candidate_bits.length.toInt, target_bits.length.toInt)
+        val lengthPenalty = math.max(candidate_bits.length.toInt, target_bits.length.toInt) - length_dif
         // inefficient bitwise comparison up to whichever ends first
         (0 until maxLength).toList.parTraverse{
-            i => IO(targetBits(i) == candidate_bits(i))
+            i => IO(target_bits(i) == candidate_bits(i))
         }.map(_.count(_ == true)).map(score => BigInt(score + lengthPenalty))
     }
 
@@ -204,11 +197,11 @@ object StringSearchExample {
         case(pop, i)=> if( i % printEvery == 0 ) {
             IO.println(s"Generation $i ===============================")
             >> Main.randomIO.flatMap(_.betweenInt(0,pop.size)).flatMap(r => IO(pop(r)))
-            .flatMap(b => simpleFitnessFn(geneticString.fromBytes(b)).map(score => (b,score)))
+            .flatMap(b => simpleFitnessFn(targetString)(geneticString.fromBytes(b)).map(score => (b,score)))
             .flatMap((b,s) => IO.println(s"--$s-->" + String(b.toArray)))
-            >> Main.randomIO.flatMap(rand => Evolver.iterate(simpleFitnessFn)(pop,100)(geneticString,rand))
+            >> Main.randomIO.flatMap(rand => Evolver.iterate(simpleFitnessFn(targetString))(pop,100)(geneticString,rand))
         } else {
-             Main.randomIO.flatMap(rand => Evolver.iterate(simpleFitnessFn)(pop,100)(geneticString,rand))
+             Main.randomIO.flatMap(rand => Evolver.iterate(simpleFitnessFn(targetString))(pop,100)(geneticString,rand))
         }
     }
 }
