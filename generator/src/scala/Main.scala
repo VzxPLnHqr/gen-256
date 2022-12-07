@@ -9,11 +9,10 @@ import scoin._
 import scodec.bits._
 
 import spire.math._
-object Main extends IOApp.Simple {
+object StringSearch extends StringSearchExample with IOApp.Simple {
 
     val randomIO = std.Random.scalaUtilRandom[IO]  
-
-    val run = StringSearchExample.run(5000,1).as(())
+    val run = evolve(5000,1).as(())
     
 
 }
@@ -173,7 +172,9 @@ object Evolver {
     }
 }
 
-object StringSearchExample {
+trait StringSearchExample {
+    val randomIO: IO[std.Random[IO]]
+
     val mary = ByteVector("the quick brown fox jumped over the sleeping dog".getBytes)
     val fox = ByteVector("mary had a little lamb whose fleece was white as snow".getBytes)
     val target = ByteVector("My father had a small estate in Nottinghamshire; I was the third of five sons. He sent me to Emanuel College in Cambridge, at fourteen years old, where I resided three years, and applied myself close to my studies; but the charge of maintaining me, although I had a very scanty allowance, being too great for a narrow fortune, I was bound apprentice to Mr. James Bates.".getBytes)
@@ -199,15 +200,15 @@ object StringSearchExample {
         }.map(_.count(_ == true)).map(score => BigInt(score + lengthPenalty))
     }
 
-    def run(numGenerations: Int, printEvery: Int) = Range(0,numGenerations).toList.foldM(List(mary,fox)){ 
+    def evolve(numGenerations: Int, printEvery: Int) = Range(0,numGenerations).toList.foldM(List(mary,fox)){ 
         case(pop, i)=> if( i % printEvery == 0 ) {
             IO.println(s"Generation $i ===============================")
-            >> Main.randomIO.flatMap(_.betweenInt(0,pop.size)).flatMap(r => IO(pop(r)))
+            >> randomIO.flatMap(_.betweenInt(0,pop.size)).flatMap(r => IO(pop(r)))
             .flatMap(b => simpleFitnessFn(targetString)(geneticString.fromBytes(b)).map(score => (b,score)))
             .flatMap((b,s) => IO.println(s"--$s-->" + String(b.toArray)))
-            >> Main.randomIO.flatMap(rand => Evolver.iterate(simpleFitnessFn(targetString))(pop,100)(geneticString,rand))
+            >> randomIO.flatMap(rand => Evolver.iterate(simpleFitnessFn(targetString))(pop,100)(geneticString,rand))
         } else {
-             Main.randomIO.flatMap(rand => Evolver.iterate(simpleFitnessFn(targetString))(pop,100)(geneticString,rand))
+             randomIO.flatMap(rand => Evolver.iterate(simpleFitnessFn(targetString))(pop,100)(geneticString,rand))
         }
     }
 }
