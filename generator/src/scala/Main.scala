@@ -12,7 +12,7 @@ import spire.math._
 object StringSearch extends examples.StringSearchExample with IOApp.Simple {
 
     val randomIO = std.Random.scalaUtilRandom[IO]  
-    val run = evolve(5000,1).as(())
+    val run = evolve(5000,10).as(())
     
 
 }

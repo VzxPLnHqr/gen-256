@@ -28,17 +28,18 @@ trait StringSearchExample {
     //    number of bits which are the 
     //    same as the target string with bonus if strings are similar in length
     val simpleFitnessFn: String => String => IO[BigInt] = 
-        target => candidate => {
-        val candidate_bits = ByteVector(candidate.getBytes).bits
-        val target_bits = ByteVector(target.getBytes).bits
-        val length_dif = math.abs(target_bits.size - candidate_bits.size) 
-        val maxLength = math.min(candidate_bits.length.toInt, target_bits.length.toInt)
-        val lengthPenalty = math.max(candidate_bits.length.toInt, target_bits.length.toInt) - length_dif
+        target => candidate => for {
+        _ <- IO.unit
+        candidate_bits = ByteVector(candidate.getBytes)
+        target_bits = ByteVector(target.getBytes)
+        length_dif = math.abs(target_bits.size - candidate_bits.size) 
+        maxLength = math.min(candidate_bits.length.toInt, target_bits.length.toInt)
+        lengthPenalty = math.max(candidate_bits.length.toInt, target_bits.length.toInt) - length_dif
         // inefficient bitwise comparison up to whichever ends first
-        (0 until maxLength).toList.parTraverse{
-            i => IO(target_bits(i) == candidate_bits(i))
-        }.map(_.count(_ == true)).map(score => BigInt(score + lengthPenalty))
-    }
+        score <- (0 until maxLength).toList.traverse{
+                    i => IO(target_bits(i) == candidate_bits(i))
+                }.map(_.count(_ == true)).map(score => BigInt(score + lengthPenalty))
+    } yield score
 
     def evolve(numGenerations: Int, printEvery: Int) = Range(0,numGenerations).toList.foldM(List(mary,fox)){ 
         case(pop, i)=> if( i % printEvery == 0 ) {

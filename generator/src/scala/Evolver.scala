@@ -27,23 +27,44 @@ object Evolver {
             } yield (b,score)
         }
 
-        val wheel = scoredPop.flatMap(rouletteWheel(_))
-
-        //fixed population size
-        (1 to newPopSize).toList.parTraverse{_ => 
+        //predetermined population size
+        (1 to newPopSize).toList.traverse{_ => 
             for {
-                lhs_r <- random.nextDouble
-                rhs_r <- random.nextDouble
-                lhs <- wheel.flatMap(w => IO.fromOption(w.apply(lhs_r))(new RuntimeException("lhs candidate does not exist!")))
-                rhs <- wheel.flatMap(w => IO.fromOption(w.apply(lhs_r))(new RuntimeException("rhs candidate does not exist!")))
+                lhs <- scoredPop.flatMap(sampleFromWeightedList(_))
+                rhs <- scoredPop.flatMap(sampleFromWeightedList(_))
                 crossed <- crossover(lhs,rhs)(random)
                 mutated <- mutate(crossed)(random)
             } yield mutated
         }
     }
 
+    /**
+     *  Random selection from weighted list.
+      * A solution that runs in O(n) would be to start out with selecting the first element. 
+      * Then for each following element either keep the element you have or replace 
+      * it with the next one. Let w be the sum of all weights for elements considered 
+      * so far. Then keep the old one with probability w/(w+x) and choose the new 
+      * one with p=x/(w+x), where x is the weight of the next element.
+      * Source: https://stackoverflow.com/questions/4511331/randomly-selecting-an-element-from-a-weighted-list
+      *
+      * @param pop
+      * @return
+      */
+    def sampleFromWeightedList[A]( pop: List[(A,BigInt)]): IO[A] =
+        pop.foldLeftM((BigInt(0),Option.empty[A])){ 
+            case ((accum_score, incumbent), (candidate, candidate_score)) => 
+                for {
+                    new_accum_score <- IO(accum_score + candidate_score)
+                    p <- IO(Real(candidate_score) / Real(new_accum_score)).map(_.toDouble)
+                    winner <- std.Random.scalaUtilRandom[IO].flatMap(_.nextDouble).map(_ <= p)
+                                .ifM(
+                                    ifTrue = IO(Some(candidate)),
+                                    ifFalse = IO(incumbent)
+                                )
+                } yield (new_accum_score, winner)
+        }.flatMap(r => IO.fromOption(r._2)(new RuntimeException("No candidate selected!")))
+
     type RouletteWheel = Double => Option[ByteVector]
-    
     /**
      * take a scored population, make a roulette wheel with odds for a
      * candidate proportional to what it contributes to the total fitness
@@ -84,7 +105,7 @@ object Evolver {
                 case true => random.nextBytes(1).map(_.head)
                 case false => IO(b)
             }
-        input.toArray.toList.parTraverse(b => mutateByte(probOfMutation,b)).map(ByteVector(_))
+        input.toArray.toList.traverse(b => mutateByte(probOfMutation,b)).map(ByteVector(_))
     }
 }
 
