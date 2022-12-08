@@ -33,7 +33,7 @@ Can we construct a genetic algorithm to find such a function code?
 Not much to see here yet.
 1. `$ ./mill -i generator.runMain vzxplnhqr.RandomBitcoinScripts` will generate a random (likely invalid) bitcoin script every time you press a key. You will need to `ctrl+c` to exit the program.
 
-2. `$ ./mill -i generator.runMain vzxplnhqr.StringSearch` will run a naive genetic algorithm which starts from a population of two strings, and mutates them to ultimately arrive at a third target string.
+2. `$ ./mill -i generator.runMain vzxplnhqr.StringSearch` will run a naive genetic algorithm which starts from a population of two strings, and mutates them to ultimately arrive at a third target string (warning: it will take a long time....days, maybe longer).
 
 ## Status
 * Can generate random bitcoin script of arbitrary length. But that is about it so far. The generated script is very likely to be invalid.
