@@ -78,6 +78,7 @@ object Evolver {
             r <- random.betweenInt(0,lhs.size.toInt + 1)
                     .both(random.betweenInt(0,rhs.size.toInt + 1))
             bytes <- IO(lhs.take(r._1)).map(_ ++ rhs.drop(r._2))
+            //_ <- IO.println(s"(took ${r._1} of ${lhs.size}, then dropped ${r._2} of ${rhs.size} --> ${bytes.size}")
         } yield bytes
 
     /**

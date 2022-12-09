@@ -24,21 +24,14 @@ trait StringSearchExample {
         def fromBytes(bytes: ByteVector): String = String(bytes.toArray)
     }
 
-    // naive fitness function for strings: 
-    //    number of bits which are the 
-    //    same as the target string with bonus if strings are similar in length
+    // naive fitness function for strings:
     val simpleFitnessFn: String => String => IO[BigInt] = 
         target => candidate => for {
         candidate_bytes <- IO(ByteVector(candidate.getBytes))
         target_bytes <- IO(ByteVector(target.getBytes))
-        length_dif <- IO(math.abs(target_bytes.size - candidate_bytes.size))
-        maxLength <- IO(math.min(candidate_bytes.size, target_bytes.size).toInt)
-        lengthBonus <- IO(math.max(candidate_bytes.size, target_bytes.size) - length_dif)
-        // inefficient bitwise comparison up to whichever ends first
-        score <- (0 until maxLength).toList.parTraverse{
-                    i => IO(target_bytes(i) - candidate_bytes(i)).map(d => 256 - math.abs(d))
-                }.map(_.sum).map(score => BigInt(score + 1000000*lengthBonus))
-    } yield score
+        longestPossiblePrefix <- IO(math.min(target_bytes.size,candidate_bytes.size))
+        score <- ???
+    } yield (score)
 
     def evolveN(startingPop: List[ByteVector], numGenerations: Int, printEvery: Int = 10): IO[List[ByteVector]] = for {
         randIO <- randomIO
