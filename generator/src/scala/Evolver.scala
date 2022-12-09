@@ -15,13 +15,13 @@ trait Genetic[A]{
 }
 
 object Evolver {
-    def iterate[A](fitness: A => IO[BigInt])
-                  (pop: List[ByteVector], newPopSize: Int)
+    def iterateOnce[A](fitness: A => IO[BigInt])
+                  (currentPop: List[ByteVector], newPopSize: Int)
                   (implicit genetic: Genetic[A], randomIO: std.Random[IO]): IO[List[ByteVector]] = for {
         
         // apply fitness function to each member of population
         // returns List[A,BigInt]
-        scoredPop <- pop.parTraverse{ 
+        scoredPop <- currentPop.parTraverse{ 
                         candidate_bytes => for {
                             repr <- IO(genetic.fromBytes(candidate_bytes))
                             score <- fitness(repr)
@@ -85,16 +85,14 @@ object Evolver {
      * to the length of the gnome */
     def mutate(input: ByteVector)(implicit random: std.Random[IO]): IO[ByteVector] = {
         val probOfMutation = if(input.size == 0) 0 else 1.0 / input.size.toDouble
+        // note: this does not allow for a mutation to "delete" a byte, but it probably should
+        IO(input).map(_.toArray.toList).flatMap(_.parTraverse(b => mutateByte(probOfMutation,b)).map(ByteVector(_)))
+    }
 
-        // note: this code does not currently ever "delete" a byte from the genome
-        // but it probably should occassionally do that
-        def mutateByte(p: Double, b: Byte): IO[Byte] = 
-            random.nextDouble.map(_ <= p)
-            .flatMap{ 
+    def mutateByte(p: Double, b: Byte)(implicit random: std.Random[IO]): IO[Byte] = 
+        random.nextDouble.map(_ <= p).flatMap{ 
                 case true => random.nextBytes(1).map(_.head)
                 case false => IO(b)
-            }
-        input.toArray.toList.parTraverse(b => mutateByte(probOfMutation,b)).map(ByteVector(_))
     }
 }
 

@@ -12,7 +12,8 @@ import spire.math._
 object StringSearch extends examples.StringSearchExample with IOApp.Simple {
 
     val randomIO = std.Random.scalaUtilRandom[IO]  
-    val run = evolve(5000,10).as(())
+    val run = evolveN(List(mary,fox),5000)
+                .flatMap(_.parTraverse(bs => IO(geneticString.fromBytes(bs)).flatMap(s => IO.println("========> " + s)))).as(())
     
 
 }

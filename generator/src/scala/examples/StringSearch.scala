@@ -29,27 +29,46 @@ trait StringSearchExample {
     //    same as the target string with bonus if strings are similar in length
     val simpleFitnessFn: String => String => IO[BigInt] = 
         target => candidate => for {
-        _ <- IO.unit
-        candidate_bits = ByteVector(candidate.getBytes)
-        target_bits = ByteVector(target.getBytes)
-        length_dif = math.abs(target_bits.size - candidate_bits.size) 
-        maxLength = math.min(candidate_bits.length.toInt, target_bits.length.toInt)
-        lengthPenalty = math.max(candidate_bits.length.toInt, target_bits.length.toInt) - length_dif
+        candidate_bytes <- IO(ByteVector(candidate.getBytes))
+        target_bytes <- IO(ByteVector(target.getBytes))
+        length_dif <- IO(math.abs(target_bytes.size - candidate_bytes.size))
+        maxLength <- IO(math.min(candidate_bytes.size, target_bytes.size).toInt)
+        lengthBonus <- IO(math.max(candidate_bytes.size, target_bytes.size) - length_dif)
         // inefficient bitwise comparison up to whichever ends first
-        score <- (0 until maxLength).toList.traverse{
-                    i => IO(target_bits(i) == candidate_bits(i))
-                }.map(_.count(_ == true)).map(score => BigInt(score + lengthPenalty))
+        score <- (0 until maxLength).toList.parTraverse{
+                    i => IO(target_bytes(i) - candidate_bytes(i)).map(d => 256 - math.abs(d))
+                }.map(_.sum).map(score => BigInt(score + 1000000*lengthBonus))
     } yield score
 
-    def evolve(numGenerations: Int, printEvery: Int) = Range(0,numGenerations).toList.foldM(List(mary,fox)){ 
-        case(pop, i)=> if( i % printEvery == 0 ) {
-            IO.println(s"Generation $i ===============================")
-            >> randomIO.flatMap(_.betweenInt(0,pop.size)).flatMap(r => IO(pop(r)))
-            .flatMap(b => simpleFitnessFn(targetString)(geneticString.fromBytes(b)).map(score => (b,score)))
-            .flatMap((b,s) => IO.println(s"--$s-->" + String(b.toArray)))
-            >> randomIO.flatMap(rand => Evolver.iterate(simpleFitnessFn(targetString))(pop,100)(geneticString,rand))
-        } else {
-             randomIO.flatMap(rand => Evolver.iterate(simpleFitnessFn(targetString))(pop,100)(geneticString,rand))
+    def evolveN(startingPop: List[ByteVector], numGenerations: Int, printEvery: Int = 10): IO[List[ByteVector]] = for {
+        randIO <- randomIO
+        fitnessFn <- IO(simpleFitnessFn(targetString))
+        evolveOnce = (cur_pop:List[ByteVector]) => Evolver.iterateOnce(fitnessFn)(cur_pop, newPopSize = 100)(geneticString,randIO)
+        finalPop <-(1 to numGenerations).toList.foldLeftM(startingPop){
+            case (newPop, i) => if( i % printEvery == 0 ) {
+                evolveOnce(newPop).flatTap(_ => printGenerationSummary(newPop, i).start)
+            } else evolveOnce(newPop)
         }
-    }
+    } yield finalPop
+
+    def printGenerationSummary(pop: List[ByteVector], generationNumber: Int): IO[Unit] = for {
+        _ <- IO.println(s"==== Generation $generationNumber ===============")
+        _ <- IO.println(s"-------population size: ${pop.size}")
+        lengthSortedPop <- pop.parTraverse(c => IO(c.size)).map(_.sorted)
+        medLength <- IO(lengthSortedPop(pop.size / 2))
+        fitnessSortedPop <- pop.parTraverse(c => IO(geneticString.fromBytes(c)).flatMap(s => simpleFitnessFn(targetString)(s))).map(_.sorted)
+        medFitness <- IO(fitnessSortedPop(pop.size / 2))
+        targetFitness <- simpleFitnessFn(targetString)(targetString)
+        _ <- IO.println(s"-------target length: ${target.size} bytes")
+        _ <- IO.println(s"-------median length: $medLength bytes")
+        _ <- IO.println("--------------------------------------")
+        _ <- IO.println(s"-------median fitness: $medFitness")
+        _ <- IO.println(s"-------target fitness: $targetFitness")
+        i <- std.Random.scalaUtilRandom[IO].flatMap(_.betweenInt(0,pop.size))
+        candidate = pop(i)
+        candidate_repr <- IO(geneticString.fromBytes(candidate))
+        candidate_score <- simpleFitnessFn(targetString)(candidate_repr)
+        _ <- IO.println(s"------candidate $i, score $candidate_score, size ${candidate.size} bytes ----> ")
+        _ <- IO.println(candidate_repr)
+    } yield ()
 }
