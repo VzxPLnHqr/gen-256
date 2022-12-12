@@ -11,6 +11,12 @@ import scodec.bits._
 import spire.math._
 
 trait Genetic[A]{
+    /**
+      * fixed length genome representation only
+      *
+      * @param bytes
+      * @return
+      */
     def fromBytes(bytes: ByteVector): A
 }
 
@@ -34,11 +40,30 @@ object Evolver {
                     i => for {
                         candidates <- sampleFromWeightedList(scoredPop)(randomIO)
                                         .both(sampleFromWeightedList(scoredPop)(randomIO))
-                        crossed <- crossover(candidates._1,candidates._2)(randomIO)
+                        crossed <- crossover(candidates._1._1,candidates._2._1)(randomIO)
                         mutated <- mutate(crossed)(randomIO)
-                    } yield mutated
+                        score <- IO(genetic.fromBytes(mutated)).flatMap(repr => fitness(repr))
+                        // select the fittest between the mutant and the parents
+                        //selected <- IO(List((candidates._1._1, candidates._1._2), (candidates._2._1, candidates._2._2), (mutated,score))).map(_.maxBy(_._2))
+                    } yield mutated //selected._1
                 }
     } yield newPop
+
+    /**
+      * select a random big integer
+      * (currently uses scala.util.Random)
+      *
+      * @param minInclusive
+      * @param maxExclusive
+      * @param randomIO
+      * @return
+      */
+    def betweenBigInt(minInclusive: BigInt, maxExclusive: BigInt)
+        (implicit randomIO: std.Random[IO]): IO[BigInt] = for {
+            diff <- IO(maxExclusive - minInclusive)
+            bitlength <- IO(diff.bitLength)
+            r <- IO(BigInt(bitlength,scala.util.Random)).iterateUntil(_ < diff)
+        } yield minInclusive + r
 
     /**
      *  Random selection from weighted list.
@@ -53,32 +78,34 @@ object Evolver {
       * @return
       */
     def sampleFromWeightedList[A]( pop: List[(A,BigInt)])
-                                 (implicit randomIO: std.Random[IO]): IO[A] =
-        pop.foldLeftM((BigInt(0),Option.empty[A])){ 
+                                 (implicit randomIO: std.Random[IO]): IO[(A,BigInt)] =
+        pop.foldLeftM((BigInt(0),Option.empty[(A,BigInt)])){ 
             case ((accum_score, incumbent), (candidate, candidate_score)) => 
                 for {
                     new_accum_score <- IO(accum_score + candidate_score)
-                    p <- IO(Real(candidate_score) / Real(new_accum_score)).map(_.toDouble)
-                    winner <- randomIO.nextDouble.map(_ <= p)
+                    winner <- if(new_accum_score == 0)
+                                IO(Some((candidate,candidate_score)))
+                              else
+                                betweenBigInt(0, new_accum_score)
+                                .map(_ < candidate_score)
                                 .ifM(
-                                    ifTrue = IO(Some(candidate)),
+                                    ifTrue = IO(Some((candidate,candidate_score))),
                                     ifFalse = IO(incumbent)
                                 )
                 } yield (new_accum_score, winner)
-        }.flatMap(r => IO.fromOption(r._2)(new RuntimeException("No candidate selected!")))
-
+        }.flatMap(r => (IO.fromOption(r._2)(new RuntimeException("No candidate selected!"))))
+        
     /**
      * perform random naive crossover between two byte vectors:
-        1. pick a point on the lhs
-        2. pick a point on the rhs
-        3. take the tail of rhs and head of lhs
+        1. for each individual pick a crossover point
+        3. take the head of lhs and tail of rhs
      * */
     def crossover(lhs: ByteVector, rhs: ByteVector)
         (implicit random: std.Random[IO]): IO[ByteVector] = for {
-            r <- random.betweenInt(0,lhs.size.toInt + 1)
-                    .both(random.betweenInt(0,rhs.size.toInt + 1))
-            bytes <- IO(lhs.take(r._1)).map(_ ++ rhs.drop(r._2))
-            //_ <- IO.println(s"(took ${r._1} of ${lhs.size}, then dropped ${r._2} of ${rhs.size} --> ${bytes.size}")
+            i <- random.betweenInt(0,lhs.size.toInt + 1)
+            j <- random.betweenInt(0,rhs.size.toInt + 1)
+            bytes <- IO(lhs.take(i)).map(_ ++ rhs.drop(j))
+            //_ <- IO.println(bytes.size - lhs.size)
         } yield bytes
 
     /**
