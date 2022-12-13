@@ -49,15 +49,16 @@ proof-of-work chain as proof of what happened while they were gone."""
             //a naive fitness score based on length first not content
             //unsuitable for strings (targets) longer than approx 1MB in size
             //the 1MB is the "ceiling" and must always be larger than both the candidate 
-            //target_size <- IO(target.size)
-            //candidate_size <- IO(candidate.size)
-            /*abs_size_diff <- IO(math.abs(target_size - candidate_size))
-            xorred_bits <- IO(abs_size_diff ^ 0).map(_.toBinaryString.reverse.padTo(24,'0').reverse)
-            score <- (0 until 24).toList.parTraverse(i => xorred_bits(i) match {
+            target_size <- IO(target.size)
+            candidate_size <- IO(candidate.size)
+            abs_size_diff <- IO(math.abs(target_size - candidate_size))
+            score <- IO(BigInt(1000000 - abs_size_diff))
+            /*xorred_bits <- IO(abs_size_diff).map(_.toBinaryString.reverse.padTo(20,'0').reverse)
+            score <- (0 until 20).toList.parTraverse(i => xorred_bits(i) match {
                 case '0' => IO(BigInt(2).pow(i))
                 case _ => IO(BigInt(0))
-            })*/
-            target_bits <- IO(ByteVector(target.getBytes))
+            }).map(_.sum)*/
+            /*target_bits <- IO(ByteVector(target.getBytes))
             candidate_bits <- IO(ByteVector(candidate.getBytes))
             xorred <- IO(target_bits.xor(candidate_bits))
             score <- (0 until xorred.size.toInt)
@@ -66,7 +67,7 @@ proof-of-work chain as proof of what happened while they were gone."""
                             case (coeff, b) if b != 0 => IO(coeff+b.toInt)
                             case (coeff, b) => IO(coeff)
                         }
-            }
+            }*/
     } yield (score)
 
     def evolveN(startingPop: List[ByteVector], numGenerations: Int, printEvery: Int = 10): IO[List[ByteVector]] = for {

@@ -94,7 +94,7 @@ object Evolver {
                                 )
                 } yield (new_accum_score, winner)
         }.flatMap(r => (IO.fromOption(r._2)(new RuntimeException("No candidate selected!"))))
-        
+
     /**
      * perform random naive crossover between two byte vectors:
         1. for each individual pick a crossover point
