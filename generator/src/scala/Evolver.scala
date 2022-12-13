@@ -12,12 +12,13 @@ import spire.math._
 
 trait Genetic[A]{
     /**
-      * fixed length genome representation only
+      * construct a value of type `A` from
+      * genome represented as bytevector
       *
-      * @param bytes
+      * @param genome
       * @return
       */
-    def fromBytes(bytes: ByteVector): A
+    def fromBytes(genome: ByteVector): A
 }
 
 object Evolver {
@@ -34,18 +35,22 @@ object Evolver {
                         } yield (candidate_bytes,score)
                     }
 
+        medianScore <- IO(scoredPop).map(_.map(_._2).sorted).map(_.apply(currentPop.size / 2 - 1))
+        _ <- IO.println(s"******Median score: $medianScore")
+
         // now build a new population by sampling from the old one
         // predetermined/fixed population size
         newPop <- (1 to newPopSize).toList.parTraverse{ 
-                    i => for {
-                        candidates <- sampleFromWeightedList(scoredPop)(randomIO)
+                    i => (for {
+                        parents <- sampleFromWeightedList(scoredPop)(randomIO)
                                         .both(sampleFromWeightedList(scoredPop)(randomIO))
-                        crossed <- crossover(candidates._1._1,candidates._2._1)(randomIO)
+                        crossed <- crossover(parents._1._1,parents._2._1)(randomIO)
                         mutated <- mutate(crossed)(randomIO)
                         score <- IO(genetic.fromBytes(mutated)).flatMap(repr => fitness(repr))
+                        //improvement <- IO.println(score - medianScore)
                         // select the fittest between the mutant and the parents
-                        //selected <- IO(List((candidates._1._1, candidates._1._2), (candidates._2._1, candidates._2._2), (mutated,score))).map(_.maxBy(_._2))
-                    } yield mutated //selected._1
+                        //selected <- IO(List((parents._1._1, parents._1._2), (parents._2._1, parents._2._2), (mutated,score))).map(_.maxBy(_._2))
+                    } yield (mutated,score)).iterateUntil(_._2 >= medianScore).map(_._1)
                 }
     } yield newPop
 

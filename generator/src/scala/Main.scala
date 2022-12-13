@@ -14,7 +14,7 @@ object StringSearch extends examples.StringSearchExample with IOApp.Simple {
     val randomIO = std.Random.scalaUtilRandom[IO] 
 
     val f = simpleFitnessFn(target_string)
-    val run = evolveN(initialNonRandomPop,5000)
+    val run = evolveN(initialNonRandomPop,5000,printEvery = 2)
                 .flatMap(_.parTraverse(bs => IO(geneticString.fromBytes(bs)).flatMap(s => f(s).flatMap(score => IO.println(s"=== $score ====> " + s))))).as(())
     
 

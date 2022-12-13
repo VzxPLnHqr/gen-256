@@ -51,8 +51,8 @@ proof-of-work chain as proof of what happened while they were gone."""
             //the 1MB is the "ceiling" and must always be larger than both the candidate 
             target_size <- IO(target.size)
             candidate_size <- IO(candidate.size)
-            abs_size_diff <- IO(math.abs(target_size - candidate_size))
-            score <- IO(BigInt(1000000 - abs_size_diff))
+            //abs_size_diff <- IO(math.abs(target_size - candidate_size))
+            score <- IO(BigInt(1000000 - math.abs(target_size - candidate_size)))
             /*xorred_bits <- IO(abs_size_diff).map(_.toBinaryString.reverse.padTo(20,'0').reverse)
             score <- (0 until 20).toList.parTraverse(i => xorred_bits(i) match {
                 case '0' => IO(BigInt(2).pow(i))
